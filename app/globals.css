@@ -1,0 +1,389 @@
+@import "tailwindcss";
+
+/* ───────────────────────── Design tokens ───────────────────────── */
+@theme inline {
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: var(--font-fraunces), Georgia, "Times New Roman", serif;
+}
+
+@theme {
+  /* Brand (unchanged from the original site) */
+  --color-forest-950: #0a2d1c;
+  --color-forest-800: #0f5132;
+  --color-forest-600: #1b8a5a;
+  --color-mint: #e8f5e9;
+  --color-gold: #c9a227;
+  --color-gold-light: #e6ca65;
+  --color-gold-deep: #997a1b;
+  --color-ivory: #fffdf5;
+
+  /* Supporting neutrals derived from the brand */
+  --color-gold-ink: #7a6110; /* gold for small text on light backgrounds (AA contrast) */
+  --color-sand: #f7f2e3;
+  --color-line: #e9e2cc;
+  --color-ink: #1a1a1a;
+  --color-body: #44514a;
+  --color-muted: #66716b;
+  --color-whatsapp: #25d366;
+  --color-whatsapp-dark: #1ebe5a;
+
+  --ease-out-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ───────────────────────── Base ───────────────────────── */
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: 88px;
+  }
+  body {
+    background: var(--color-ivory);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-display {
+    font-optical-sizing: auto;
+    font-variation-settings: "SOFT" 50;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  p {
+    text-wrap: pretty;
+  }
+  ::selection {
+    background-color: var(--color-forest-800);
+    color: var(--color-gold-light);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-gold);
+    outline-offset: 3px;
+    border-radius: 6px;
+  }
+  button,
+  [role="button"] {
+    cursor: pointer;
+  }
+}
+
+/* ───────────────────────── Components ───────────────────────── */
+@layer components {
+  .shell {
+    width: 100%;
+    max-width: 78rem;
+    margin-inline: auto;
+    padding-inline: 1.25rem;
+  }
+  @media (width >= 768px) {
+    .shell {
+      padding-inline: 2rem;
+    }
+  }
+
+  /* Buttons: one height scale, never wrap */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    height: 3rem;
+    padding-inline: 1.5rem;
+    border-radius: 9999px;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease,
+      transform 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn svg {
+    width: 1.05rem;
+    height: 1.05rem;
+    flex-shrink: 0;
+  }
+  .btn-sm {
+    height: 2.5rem;
+    padding-inline: 1.1rem;
+    font-size: 0.875rem;
+  }
+  .btn-lg {
+    height: 3.5rem;
+    padding-inline: 1.9rem;
+    font-size: 1rem;
+  }
+  @media (width < 640px) {
+    .btn-lg {
+      padding-inline: 1.25rem;
+      font-size: 0.9375rem;
+    }
+  }
+  .btn-gold {
+    background: var(--color-gold);
+    color: var(--color-forest-950);
+    box-shadow: 0 10px 30px -12px rgb(201 162 39 / 0.55);
+  }
+  .btn-gold:hover {
+    background: var(--color-gold-light);
+  }
+  .btn-forest {
+    background: var(--color-forest-800);
+    color: var(--color-ivory);
+  }
+  .btn-forest:hover {
+    background: var(--color-forest-950);
+  }
+  .btn-whatsapp {
+    background: var(--color-whatsapp);
+    color: var(--color-forest-950);
+  }
+  .btn-whatsapp:hover {
+    background: var(--color-whatsapp-dark);
+  }
+  .btn-outline {
+    border-color: rgb(15 81 50 / 0.22);
+    color: var(--color-forest-800);
+    background: transparent;
+  }
+  .btn-outline:hover {
+    background: var(--color-mint);
+    border-color: rgb(15 81 50 / 0.35);
+  }
+  .btn-outline-light {
+    border-color: rgb(255 253 245 / 0.28);
+    color: var(--color-ivory);
+    background: rgb(255 253 245 / 0.04);
+  }
+  .btn-outline-light:hover {
+    background: rgb(255 253 245 / 0.12);
+    border-color: rgb(255 253 245 / 0.45);
+  }
+
+  /* Inline text link with arrow */
+  .link-arrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+    white-space: nowrap;
+    color: var(--color-forest-800);
+  }
+  .link-arrow svg {
+    width: 1rem;
+    height: 1rem;
+    transition: transform 0.2s ease;
+  }
+  .link-arrow:hover svg {
+    transform: translateX(3px);
+  }
+
+  /* Filter chips */
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    height: 2.5rem;
+    padding-inline: 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    white-space: nowrap;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    color: var(--color-body);
+    transition:
+      background-color 0.2s ease,
+      color 0.2s ease,
+      border-color 0.2s ease;
+  }
+  .chip:hover {
+    border-color: rgb(15 81 50 / 0.3);
+    color: var(--color-forest-800);
+  }
+  .chip[aria-pressed="true"] {
+    background: var(--color-forest-800);
+    border-color: var(--color-forest-800);
+    color: var(--color-ivory);
+  }
+
+  /* The signature arch (jharokha) frame */
+  /* Semicircular top on a 4:5 frame (50% of width horizontally = 40% of height vertically) */
+  .arch {
+    border-radius: 50% 50% 1.5rem 1.5rem / 40% 40% 1.5rem 1.5rem;
+    overflow: hidden;
+  }
+
+  /* Form fields */
+  .field {
+    width: 100%;
+    height: 3rem;
+    padding-inline: 1rem;
+    border-radius: 0.875rem;
+    border: 1px solid var(--color-line);
+    background: #fff;
+    font-size: 0.9375rem;
+    color: var(--color-ink);
+    transition:
+      border-color 0.2s ease,
+      box-shadow 0.2s ease;
+  }
+  .field::placeholder {
+    color: #9aa39e;
+  }
+  .field:focus {
+    outline: none;
+    border-color: var(--color-forest-600);
+    box-shadow: 0 0 0 3px rgb(27 138 90 / 0.15);
+  }
+  textarea.field {
+    height: auto;
+    padding-block: 0.75rem;
+    resize: vertical;
+  }
+  select.field {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%230F5132' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.9rem center;
+  }
+  .label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--color-forest-950);
+  }
+
+  /* Hide scrollbar on horizontal chip rows */
+  .no-scrollbar {
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* ───────────────────────── Motion ───────────────────────── */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(22px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes arch-reveal {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .anim-rise {
+    animation: rise 0.65s var(--ease-out-soft) both;
+    animation-delay: var(--d, 0ms);
+  }
+  .anim-fade {
+    animation: fade 0.8s ease both;
+    animation-delay: var(--d, 0ms);
+  }
+  .anim-arch {
+    animation: arch-reveal 0.9s var(--ease-out-soft) both;
+    animation-delay: var(--d, 0ms);
+  }
+  .anim-draw {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+    animation: draw 1.6s var(--ease-out-soft) forwards;
+    animation-delay: var(--d, 0ms);
+  }
+  .anim-pop {
+    animation: pop 0.45s var(--ease-out-soft) both;
+  }
+
+}
+
+/* Scroll reveal — pure CSS (scroll-driven animation), zero JavaScript.
+   Browsers without support simply show the content immediately. */
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    [data-reveal] {
+      animation: reveal linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 35%;
+    }
+  }
+}
+
+/* Native dialog */
+dialog.sheet {
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  max-width: none;
+  max-height: none;
+  width: 100%;
+  height: 100%;
+}
+dialog.sheet::backdrop {
+  background: rgb(10 45 28 / 0.6);
+  backdrop-filter: blur(6px);
+}
