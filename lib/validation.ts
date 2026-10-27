@@ -38,7 +38,11 @@ export function validateBooking(raw: Partial<RawBooking>):
   if (data.email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(data.email))
     return { ok: false, error: "Please enter a valid email address, or leave it empty." };
   if (!consultationModes.some((m) => m.id === data.type)) data.type = consultationModes[0].id;
-  if (data.preferredDate && !/^\d{4}-\d{2}-\d{2}$/.test(data.preferredDate)) data.preferredDate = "";
+  if (
+    data.preferredDate &&
+    (!/^\d{4}-\d{2}-\d{2}$/.test(data.preferredDate) || Number.isNaN(Date.parse(`${data.preferredDate}T00:00:00Z`)))
+  )
+    data.preferredDate = "";
   if (!raw.consent) return { ok: false, error: "Please confirm we may use your details to arrange the consultation." };
 
   return { ok: true, data, page: clean(raw.page, 100) };

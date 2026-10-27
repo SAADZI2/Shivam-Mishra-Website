@@ -6,7 +6,8 @@ import StatusSelect from "@/components/admin/StatusSelect";
 import { deleteBooking, logout } from "./actions";
 import { adminConfigured, isAdmin } from "@/lib/auth";
 import { BOOKING_STATUSES } from "@/lib/booking-status";
-import { ensureSchema, getSql, type Booking } from "@/lib/db";
+import type { Filter } from "mongodb";
+import { bookings, dbConfigured, escapeRegex, getDb, type BookingDoc } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
@@ -61,49 +62,68 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
     );
   }
 
-  const sql = getSql();
-  if (!sql) {
-    return (
-      <Centered title="Database not connected">
-        <p className="leading-relaxed text-body">
-          Add <code className="rounded bg-sand px-1.5 py-0.5 text-sm">DATABASE_URL</code> to the environment
-          variables to start saving bookings. See <strong>ADMIN-SETUP.md</strong>.
-        </p>
-        <form action={logout} className="mt-6">
-          <button className="btn btn-outline w-full">Sign out</button>
-        </form>
-      </Centered>
+  const notConnected = (title: string, body: React.ReactNode) => (
+    <Centered title={title}>
+      <p className="leading-relaxed text-body">{body}</p>
+      <form action={logout} className="mt-6">
+        <button className="btn btn-outline w-full">Sign out</button>
+      </form>
+    </Centered>
+  );
+
+  if (!dbConfigured()) {
+    return notConnected(
+      "Database not connected",
+      <>
+        Add <code className="rounded bg-sand px-1.5 py-0.5 text-sm">MONGODB_URI</code> to the environment variables
+        to start saving bookings. See <strong>ADMIN-SETUP.md</strong>.
+      </>
     );
   }
 
-  await ensureSchema();
+  let db: Awaited<ReturnType<typeof getDb>>;
+  try {
+    db = await getDb();
+  } catch (err) {
+    console.error("admin: database unreachable", err);
+    db = null;
+  }
+  if (!db) {
+    return notConnected(
+      "Can't reach the database",
+      <>
+        <code className="rounded bg-sand px-1.5 py-0.5 text-sm">MONGODB_URI</code> is set, but the database didn&apos;t
+        answer. Make sure MongoDB is running (or that your Atlas cluster allows this server&apos;s IP), then refresh.
+      </>
+    );
+  }
+
   const sp = await searchParams;
   const q = (sp.q ?? "").trim().slice(0, 80);
   const status = (BOOKING_STATUSES as readonly string[]).includes(sp.status ?? "") ? sp.status! : "all";
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
-  const like = `%${q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
 
-  const [rowsRaw, countsRaw, totalRaw] = await Promise.all([
-    sql`
-      SELECT id, created_at, name, phone, email, concern, mode, preferred_date, message, source_page, status
-      FROM bookings
-      WHERE (${status}::text = 'all' OR status = ${status})
-        AND (${q}::text = '' OR name ILIKE ${like} OR phone ILIKE ${like} OR email ILIKE ${like} OR concern ILIKE ${like})
-      ORDER BY created_at DESC
-      LIMIT ${PAGE_SIZE} OFFSET ${(page - 1) * PAGE_SIZE}`,
-    sql`SELECT status, count(*)::int AS n FROM bookings GROUP BY status`,
-    sql`
-      SELECT count(*)::int AS n FROM bookings
-      WHERE (${status}::text = 'all' OR status = ${status})
-        AND (${q}::text = '' OR name ILIKE ${like} OR phone ILIKE ${like} OR email ILIKE ${like} OR concern ILIKE ${like})`,
+  const filter: Filter<BookingDoc> = {};
+  if (status !== "all") filter.status = status;
+  if (q) {
+    const rx = { $regex: escapeRegex(q), $options: "i" };
+    filter.$or = [{ name: rx }, { phone: rx }, { email: rx }, { concern: rx }];
+  }
+
+  const col = bookings(db);
+  const [rows, counts, matching] = await Promise.all([
+    col
+      .find(filter, { projection: { ipHash: 0 } })
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * PAGE_SIZE)
+      .limit(PAGE_SIZE)
+      .toArray(),
+    col.aggregate<{ _id: string; n: number }>([{ $group: { _id: "$status", n: { $sum: 1 } } }]).toArray(),
+    col.countDocuments(filter),
   ]);
-  const rows = rowsRaw as Booking[];
-  const counts = countsRaw as { status: string; n: number }[];
-  const totalRows = totalRaw as { n: number }[];
 
-  const countBy = Object.fromEntries(counts.map((c) => [c.status, c.n]));
+  const countBy: Record<string, number> = Object.fromEntries(counts.map((c) => [c._id, c.n]));
   const total = counts.reduce((a, c) => a + c.n, 0);
-  const matching = totalRows[0]?.n ?? 0;
   const pages = Math.max(1, Math.ceil(matching / PAGE_SIZE));
 
   const href = (patch: Record<string, string | number | undefined>) => {
@@ -193,13 +213,13 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
             {rows.map((b) => {
               const wa = `https://wa.me/${b.phone.replace(/\D/g, "")}`;
               return (
-                <li key={b.id} className="rounded-[1.5rem] bg-ivory p-6 ring-1 ring-line">
+                <li key={b.number} className="rounded-[1.5rem] bg-ivory p-6 ring-1 ring-line">
                   <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                         <h2 className="font-display text-xl text-forest-950">{b.name}</h2>
                         <span className="text-sm text-muted">
-                          #{b.id} · {fmt.format(new Date(b.created_at))}
+                          #{b.number} · {fmt.format(b.createdAt)}
                         </span>
                       </div>
                       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[0.9375rem]">
@@ -222,7 +242,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
                       </div>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
-                      <StatusSelect id={Number(b.id)} status={b.status} />
+                      <StatusSelect id={b.number} status={b.status} />
                       <details className="relative">
                         <summary className="btn btn-sm btn-outline list-none [&::-webkit-details-marker]:hidden">
                           Delete
@@ -231,7 +251,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
                           action={deleteBooking}
                           className="absolute right-0 top-full z-10 mt-2 w-64 rounded-2xl bg-white p-4 text-sm shadow-xl ring-1 ring-line"
                         >
-                          <input type="hidden" name="id" value={b.id} />
+                          <input type="hidden" name="id" value={b.number} />
                           <p className="text-body">Permanently delete this booking? This can&apos;t be undone.</p>
                           <button className="btn btn-sm mt-3 w-full bg-red-700 text-white hover:bg-red-800">
                             Yes, delete
@@ -253,12 +273,12 @@ export default async function AdminPage({ searchParams }: { searchParams: Search
                     <div>
                       <dt className="text-muted">Preferred date</dt>
                       <dd className="mt-0.5 font-semibold text-ink">
-                        {b.preferred_date ? fmtDate.format(new Date(b.preferred_date)) : "Earliest available"}
+                        {b.preferredDate ? fmtDate.format(new Date(`${b.preferredDate}T00:00:00Z`)) : "Earliest available"}
                       </dd>
                     </div>
                     <div>
                       <dt className="text-muted">Booked from</dt>
-                      <dd className="mt-0.5 font-semibold text-ink">{b.source_page || "—"}</dd>
+                      <dd className="mt-0.5 font-semibold text-ink">{b.sourcePage || "—"}</dd>
                     </div>
                     {b.message && (
                       <div className="sm:col-span-2 lg:col-span-4">

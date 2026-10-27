@@ -2,16 +2,23 @@
 
 ## Where does form data go?
 1. A patient submits the booking form on any page.
-2. The request is validated **on the server** and saved to a private **Neon Postgres** database.
+2. The request is validated **on the server** and saved to a private **MongoDB** database.
 3. The clinic gets an **email alert** (via Resend) with every detail and a link to the dashboard.
 4. Staff sign in at **`/admin`** to see, search, update the status of, export or delete bookings.
 
 If the database is not connected, the form tells the patient and offers a one-tap WhatsApp fallback, so no request is ever lost.
 
-## 1. Database (Neon)
-- Vercel → your project → **Storage** → **Create Database** → **Neon** → connect to the project.
-  This adds `DATABASE_URL` automatically. (Or create a free project at neon.tech and copy the connection string.)
-- Tables are created automatically on the first booking/admin visit. Nothing to run.
+## 1. Database (MongoDB)
+**On your computer:** install MongoDB (e.g. `winget install -e --id MongoDB.Server`) and set
+`MONGODB_URI=mongodb://127.0.0.1:27017` (use `127.0.0.1`, not `localhost`).
+
+**On Vercel (live site):** a database on your PC can't be reached from the internet, so use **MongoDB Atlas** (free M0 tier):
+- atlas.mongodb.com → create a free cluster (region: Mumbai `ap-south-1`).
+- Database Access → add a user with a strong password.
+- Network Access → add `0.0.0.0/0` (Vercel has no fixed IP; access is still protected by the user/password and TLS).
+- Connect → Drivers → copy the `mongodb+srv://…` string into `MONGODB_URI` in Vercel.
+
+Collections and indexes are created automatically. View the data any time in **MongoDB Compass** (database `dr_shivam_mishra`, collection `bookings`).
 
 ## 2. Admin login
 In Vercel → Settings → Environment Variables add:
@@ -32,5 +39,5 @@ For local testing, copy `.env.example` to `.env.local`, fill it in, and restart 
 - Password compared in constant time; 5 failed logins per 15 minutes per device, then locked out.
 - Session is a signed, `httpOnly`, `secure`, `sameSite=strict` cookie that expires after 12 hours.
 - Every admin action is re-checked on the server. `/admin` is `noindex` and blocked in robots.txt.
-- Bookings: server-side validation, bot honeypot, 5 requests per 10 minutes per device, parameterised SQL (no injection), IP addresses stored only as a salted hash.
+- Bookings: server-side validation, bot honeypot, 5 requests per 10 minutes per device, typed queries with escaped search input (no NoSQL injection), IP addresses stored only as a salted hash.
 - CSV export is protected against spreadsheet formula injection.

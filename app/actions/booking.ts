@@ -1,6 +1,6 @@
 "use server";
 
-import { ensureSchema, getSql } from "@/lib/db";
+import { bookings, getDb, nextBookingNumber } from "@/lib/db";
 import { sendBookingEmail } from "@/lib/email";
 import { ipHash } from "@/lib/security";
 import { validateBooking, type RawBooking } from "@/lib/validation";
@@ -20,31 +20,37 @@ export async function createBooking(raw: Partial<RawBooking>): Promise<BookingRe
   if (!parsed.ok) return parsed;
   const b = parsed.data;
 
-  const sql = getSql();
-  if (!sql) {
-    return { ok: false, fallback: true, error: "Online booking is not connected yet. Please send your request on WhatsApp." };
-  }
-
   try {
-    await ensureSchema();
+    const db = await getDb();
+    if (!db) {
+      return { ok: false, fallback: true, error: "Online booking is not connected yet. Please send your request on WhatsApp." };
+    }
+    const col = bookings(db);
     const ip = await ipHash();
 
-    const recent = (await sql`
-      SELECT count(*)::int AS n FROM bookings
-      WHERE ip_hash = ${ip} AND created_at > now() - interval '10 minutes'`) as { n: number }[];
-    if ((recent[0]?.n ?? 0) >= MAX_PER_10_MIN) {
+    const recent = await col.countDocuments({ ipHash: ip, createdAt: { $gt: new Date(Date.now() - 10 * 60_000) } });
+    if (recent >= MAX_PER_10_MIN) {
       return { ok: false, error: "Too many requests from this device. Please call or WhatsApp us instead." };
     }
 
-    const rows = (await sql`
-      INSERT INTO bookings (name, phone, email, concern, mode, preferred_date, message, source_page, ip_hash)
-      VALUES (${b.name}, ${b.phone}, ${b.email || null}, ${b.condition}, ${b.type},
-              ${b.preferredDate || null}, ${b.message || null}, ${parsed.page || null}, ${ip})
-      RETURNING id`) as { id: number }[];
+    const number = await nextBookingNumber(db);
+    await col.insertOne({
+      number,
+      createdAt: new Date(),
+      name: b.name,
+      phone: b.phone,
+      email: b.email || null,
+      concern: b.condition,
+      mode: b.type,
+      preferredDate: b.preferredDate || null,
+      message: b.message || null,
+      sourcePage: parsed.page || null,
+      status: "new",
+      ipHash: ip,
+    });
 
-    const id = Number(rows[0].id);
-    await sendBookingEmail(b, id);
-    return { ok: true, id };
+    await sendBookingEmail(b, number);
+    return { ok: true, id: number };
   } catch (err) {
     console.error("createBooking failed", err);
     return { ok: false, fallback: true, error: "We couldn't save your request just now. Please send it on WhatsApp." };

@@ -14,7 +14,7 @@ npm run build && npm start   # real speed: this is what visitors get on Vercel
 > **Judge speed only with `npm run build && npm start` (or the Vercel deployment).** `npm run dev` compiles every page the first time you open it, adds debugging tools and disables caching — it is several times slower than production by design.
 
 ## Bookings & admin dashboard
-- Every booking is saved to a private database and emailed to the clinic.
+- Every booking is saved to a private MongoDB database and emailed to the clinic.
 - Staff sign in at **`/admin`** (password protected) to view, search, filter by status, update status (new → contacted → confirmed → completed / cancelled), export CSV or delete.
 - Setup takes ~10 minutes: see **[ADMIN-SETUP.md](ADMIN-SETUP.md)** and `.env.example`.
 
@@ -62,7 +62,7 @@ Change the phone number once in `site.ts` and it updates in the header, footer, 
 
 ## Security
 - Strict headers on every route (`next.config.ts`): Content-Security-Policy, HSTS (preload-ready), X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy, COOP. `X-Powered-By` removed.
-- No third-party scripts. Bookings are validated on the server, rate-limited, protected by a bot honeypot and stored with parameterised SQL. Admin uses a signed httpOnly session cookie with login lockout. Details in ADMIN-SETUP.md.
+- No third-party scripts. Bookings are validated on the server, rate-limited, protected by a bot honeypot and stored with typed MongoDB queries. Admin uses a signed httpOnly session cookie with login lockout. Details in ADMIN-SETUP.md.
 - External links use `rel="noopener noreferrer"`; form fields have length limits and phone validation.
 
 ## v3 fixes
